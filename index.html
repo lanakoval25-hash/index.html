@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Туристична карта Білоцерківської громади</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  body { margin:0; padding:0; font-family: Arial, sans-serif; }
+  #map { height: 85vh; width: 100%; }
+  #menu { height: 10vh; padding: 10px; background: #f5f5f5; display:flex; align-items:center; }
+  select { font-size: 16px; padding: 5px; margin-left: 10px; }
+  #legend { background: white; padding: 10px; line-height: 1.5; position:absolute; bottom:10px; left:10px; z-index:1000; box-shadow: 0 0 5px rgba(0,0,0,0.3);}
+  .legend-color { display:inline-block; width:20px; height:10px; margin-right:5px; }
+</style>
+</head>
+<body>
+<div id="menu">
+  <b>Виберіть маршрут:</b>
+  <select id="routeSelect">
+    <option value="">-- Оберіть маршрут --</option>
+    <option value="history">Історичний тур</option>
+    <option value="nature">Природний тур</option>
+    <option value="farm">Фермерські господарства</option>
+    <option value="parks">Парки та рекреація</option>
+  </select>
+</div>
+<div id="map"></div>
+<div id="legend">
+  <b>Легенда маршрутів:</b><br>
+  <div><span class="legend-color" style="background:blue"></span> Історичний тур</div>
+  <div><span class="legend-color" style="background:green"></span> Природний тур</div>
+  <div><span class="legend-color" style="background:brown"></span> Фермерські господарства</div>
+  <div><span class="legend-color" style="background:orange"></span> Парки та рекреація</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map').setView([49.85, 30.05], 11);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors',
+  maxZoom: 19
+}).addTo(map);
+
+// Координати населених пунктів
+const points = {
+  "Мазепинці":[49.9117,29.9842],
+  "Дрозди":[49.8862,29.9773],
+  "Вільна Тарасівка":[49.8747,30.0864],
+  "Біла Церква":[49.7968,30.1311],
+  "Шкарівка":[49.7437,30.1683],
+  "Глибочка":[49.7605,30.0397],
+  "Сидори":[49.9349,29.9871],
+  "Володимирівка":[49.8800,30.0300],
+  "Терезине":[49.8650,30.0500]
+};
+
+// Історичні описи
+const descriptions = {
+  "Мазепинці":"Родове село гетьмана Івана Мазепи, пам'ятник та Храм Святителя Миколая, Меморіальний комплекс парку козацької слави.",
+  "Дрозди":"Село 15-16 ст., історично пов’язане з родом Мазепи.",
+  "Вільна Тарасівка":"Село засноване 1921 року переселенцями з Мазепинців та інших сіл.",
+  "Біла Церква":"Центр громади, місто з багатою історією та культурними пам’ятками.",
+  "Шкарівка":"Заснована в 16 ст., дерев’яний Храм Святого Духа (1750), парк ім. Шевченка, краєзнавчий музей.",
+  "Глибочка":"Відома з 18 ст., належала графам Браницьким.",
+  "Сидори":"Засноване в 17 ст. Над річкою Кам’янка, поруч колишня гідроелектростанція, дерев’яна церква 2012 року.",
+  "Володимирівка":"Фермерські господарства, равликова ферма.",
+  "Терезине":"Відоме фермерськими продуктами, колишні господарства графів Браницьких."
+};
+
+// Додаємо маркери
+for(let name in points){
+  L.marker(points[name]).addTo(map)
+    .bindPopup(`<b>${name}</b><br>${descriptions[name]}`);
+}
+
+// Маршрути
+const routes = {
+  "history":[
+    {coord: points["Мазепинці"], name:"Мазепинці"},
+    {coord: points["Дрозди"], name:"Дрозди"},
+    {coord: points["Вільна Тарасівка"], name:"Вільна Тарасівка"},
+    {coord: points["Біла Церква"], name:"Біла Церква"},
+    {coord: points["Шкарівка"], name:"Шкарівка"}
+  ],
+  "nature":[
+    {coord: points["Глибочка"], name:"Глибочка"},
+    {coord: points["Сидори"], name:"Сидори"},
+    {coord: points["Вільна Тарасівка"], name:"Вільна Тарасівка"},
+    {coord: points["Біла Церква"], name:"Біла Церква"}
+  ],
+  "farm":[
+    {coord: points["Володимирівка"], name:"Володимирівка"},
+    {coord: points["Терезине"], name:"Терезине"},
+    {coord: points["Вільна Тарасівка"], name:"Вільна Тарасівка"}
+  ],
+  "parks":[
+    {coord: points["Шкарівка"], name:"Шкарівка"},
+    {coord: points["Глибочка"], name:"Глибочка"},
+    {coord: points["Мазепинці"], name:"Мазепинці"}
+  ]
+};
+
+const routeColors = {
+  "history":"blue",
+  "nature":"green",
+  "farm":"brown",
+  "parks":"orange"
+};
+
+let routeLine;
+let routeMarkers = [];
+
+document.getElementById('routeSelect').addEventListener('change', function(){
+  const val = this.value;
+
+  if(routeLine) map.removeLayer(routeLine);
+  routeMarkers.forEach(m=>map.removeLayer(m));
+  routeMarkers = [];
+
+  if(val && routes[val]){
+    const routeCoords = routes[val].map(p=>p.coord);
+
+    routeLine = L.polyline(routeCoords, {
+      color: routeColors[val],
+      weight:4,
+      opacity:0.7,
+      dashArray:'10,5'
+    }).addTo(map);
+
+    map.fitBounds(routeLine.getBounds());
+
+    routes[val].forEach(p=>{
+      const popup = L.popup({closeOnClick:false, autoClose:false})
+        .setLatLng(p.coord)
+        .setContent(`<b>${p.name}</b><br>${descriptions[p.name]}`)
+        .openOn(map);
+      routeMarkers.push(popup);
+    });
+  }
+});
+</script>
+</body>
+</html>
